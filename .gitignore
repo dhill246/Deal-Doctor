@@ -1,0 +1,24 @@
+# Environment
+.env
+
+# Generated data (contains user's deal data)
+deals.json
+analysis.json
+analysis_config.json
+
+# Generated reports
+report_*.pdf
+report_*.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp

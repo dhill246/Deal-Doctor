@@ -108,7 +108,7 @@ That's it. Claude will verify your setup, connect to your HubSpot, and walk you 
 ## FAQ
 
 **Will this modify anything in my HubSpot?**
-No. The token only has read access to deals. Nothing is created, updated, or deleted.
+No. The token only has read access to deals. Nothing is created, updated, or deleted. Just make sure that's the only scope that you grant.
 
 **How many deals do I need?**
 The tool works with as few as 10 closed deals, but you'll get the most insight with 50+. It automatically skips sections that don't have enough data to be meaningful.

@@ -2,6 +2,8 @@
 
 A pipeline diagnosis tool that connects to your HubSpot portal, pulls your deal data, and tells you what's healthy and what needs attention. Runs inside [Claude Code](https://claude.ai/code) — no coding required.
 
+![Deal Doctor Report Demo](screenshots/deal-doctor-demo.gif)
+
 ---
 
 ## Getting Started
@@ -79,8 +81,6 @@ That's it. Claude will verify your setup, connect to your HubSpot, and walk you 
 ## What You Get
 
 **An interactive HTML report** you can open in any browser:
-
-![Deal Doctor Report Demo](screenshots/deal-doctor-demo.gif)
 
 - Interactive Plotly charts — hover for details, zoom, filter
 - Click any table row to drill down into the actual deals behind the numbers

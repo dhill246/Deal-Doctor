@@ -80,6 +80,8 @@ That's it. Claude will verify your setup, connect to your HubSpot, and walk you 
 
 **An interactive HTML report** you can open in any browser:
 
+![Deal Doctor Report Demo](screenshots/deal-doctor-demo.gif)
+
 - Interactive Plotly charts — hover for details, zoom, filter
 - Click any table row to drill down into the actual deals behind the numbers
 - Dark/light mode toggle

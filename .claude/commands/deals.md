@@ -134,9 +134,31 @@ py deal_analyzer.py metrics --data deals.json
 
 Read the full metrics JSON output. Now you know everything about their pipeline. Take a moment to actually THINK about what this data says.
 
-## Step 5: Present What You Found
+## Step 5: Generate the Report
 
-Do NOT present a wall of stats. Instead:
+The report is the primary deliverable — always generate it immediately after computing metrics. Don't wait for user input or a conversational back-and-forth first.
+
+Analyze the metrics data and identify the most important findings. Write 3-5 findings as concise, actionable statements — not stats, insights. Then select the report sections that are relevant based on the data.
+
+Generate the HTML report:
+
+```bash
+py deal_analyzer.py report --data analysis.json --sections "SECTION1,SECTION2,..." --findings 'JSON_ARRAY'
+```
+
+Available sections: `executive_summary`, `win_loss`, `deal_size`, `tier_analysis`, `sales_cycle`, `cycle_vs_size`, `deal_velocity`, `revenue_concentration`, `time_trends`, `quarterly_trends`, `rep_performance`, `source_analysis`, `loss_reasons`, `stage_dropoff`
+
+Only include sections that are:
+1. Supported by enough data (the builder will skip thin sections automatically)
+2. Actually relevant to what you found interesting in the data
+
+The `--findings` parameter is a JSON array of objects: `[{"text": "Finding 1"}, {"text": "Finding 2"}]`
+
+Use specific names (companies, reps, deal names) in findings — they make the insights actionable for the person reading their own report.
+
+## Step 6: Present What You Found
+
+After the report is generated, give the user a quick summary. Do NOT present a wall of stats. Instead:
 
 **Present 2-3 striking observations.** These should be specific and surprising:
 
@@ -149,44 +171,14 @@ Do NOT present a wall of stats. Instead:
 - BAD: "Direct Traffic is your top source with 45 deals."
 - GOOD: "Referrals bring you half the volume of Direct Traffic but close at 2x the rate and 30% larger. That's your highest-leverage channel."
 
-**Then ask ONE question** to understand what they care about most:
-
-- "Before I dig deeper — is improving your large-deal win rate a priority, or are you more focused on volume at the mid-market level?"
-- "I see a lot of deals stalling at the Scope stage. Is that where you do pricing, or is that more of a discovery step?"
-- "One rep is significantly outperforming the others. Do you know what they're doing differently, or is that something you'd want me to look into?"
-
-## Step 6: Go Deeper Based on Their Answer
-
-Based on what they say, dig into the relevant part of the data. You have the full metrics — pull specific numbers, compare segments, identify patterns. Another 2-3 insights, then offer to generate the report.
-
-## Step 7: Generate the Report
-
-Now that you know what matters, choose sections that are relevant. Build a findings list from your consulting conversation — the insights you surfaced, framed as actionable findings.
-
-Generate the HTML report:
-
-```bash
-py deal_analyzer.py report --data analysis.json --sections "SECTION1,SECTION2,..." --findings 'JSON_ARRAY'
-```
-
-Available sections: `executive_summary`, `win_loss`, `deal_size`, `tier_analysis`, `sales_cycle`, `cycle_vs_size`, `deal_velocity`, `revenue_concentration`, `time_trends`, `quarterly_trends`, `rep_performance`, `source_analysis`, `loss_reasons`, `stage_dropoff`
-
-Only include sections that are:
-1. Supported by enough data (the builder will skip thin sections automatically)
-2. Actually relevant to what you found interesting or what the user cares about
-
-The `--findings` parameter is a JSON array of objects: `[{"text": "Finding 1"}, {"text": "Finding 2"}]`
-
-These are YOUR findings from the conversation — write them as concise, actionable statements. Not stats, insights. They appear at the top of the report.
-
-After generating, tell them:
+Then tell them:
 - Where the HTML report is saved
 - That they can open it in any browser for interactive charts and drill-downs
 - That they can click any table row to see the actual deals behind the numbers
 - There's a what-if calculator to model win rate improvements
 - And a "Dig Deeper" section with follow-up questions they can bring back to this conversation
 
-## Step 8: Follow-Up
+## Step 7: Follow-Up
 
 Ask: "What else do you want to know? I've got all your deal data loaded — I can compare reps, break down losses by size tier, look at specific time periods, or answer whatever's on your mind."
 

@@ -146,27 +146,61 @@ class HTMLReportBuilder:
                 },
             }
 
-        # Deal size histogram
+        # Deal size distribution — strip chart for small datasets, histogram for large
         dist = m.get("deal_size_distribution")
         if dist and dist.get("won_values") and dist.get("lost_values"):
-            configs["deal_size_hist"] = {
-                "data": [
-                    {"x": dist["won_values"], "type": "histogram", "name": "Won",
-                     "marker": {"color": "rgba(16,163,127,0.7)"}, "nbinsx": 15},
-                    {"x": dist["lost_values"], "type": "histogram", "name": "Lost",
-                     "marker": {"color": "rgba(220,53,69,0.7)"}, "nbinsx": 15},
-                ],
-                "layout": {
-                    "barmode": "overlay",
-                    "showlegend": True,
-                    "legend": {"x": 0.75, "y": 0.95},
-                    "margin": {"t": 20, "b": 40, "l": 60, "r": 20},
-                    "paper_bgcolor": "transparent",
-                    "plot_bgcolor": "transparent",
-                    "xaxis": {"title": "Deal Size", "tickprefix": "$", "tickformat": ",.0f"},
-                    "yaxis": {"title": "Count", "gridcolor": "rgba(128,128,128,0.15)"},
-                },
-            }
+            all_values = dist["won_values"] + dist["lost_values"]
+            if len(all_values) <= 30:
+                # Strip chart: each deal is a dot on the x-axis
+                configs["deal_size_hist"] = {
+                    "data": [
+                        {"x": dist["won_values"],
+                         "y": ["Won"] * len(dist["won_values"]),
+                         "mode": "markers", "type": "scatter", "name": "Won",
+                         "marker": {"color": "#10a37f", "size": 12, "opacity": 0.8,
+                                    "line": {"color": "rgba(255,255,255,0.3)", "width": 1}},
+                         "hovertemplate": "$%{x:,.0f}<extra>Won</extra>"},
+                        {"x": dist["lost_values"],
+                         "y": ["Lost"] * len(dist["lost_values"]),
+                         "mode": "markers", "type": "scatter", "name": "Lost",
+                         "marker": {"color": "#dc3545", "size": 12, "opacity": 0.8,
+                                    "line": {"color": "rgba(255,255,255,0.3)", "width": 1}},
+                         "hovertemplate": "$%{x:,.0f}<extra>Lost</extra>"},
+                    ],
+                    "layout": {
+                        "showlegend": False,
+                        "margin": {"t": 20, "b": 50, "l": 60, "r": 20},
+                        "paper_bgcolor": "transparent",
+                        "plot_bgcolor": "transparent",
+                        "xaxis": {"title": "Deal Size", "tickprefix": "$",
+                                  "tickformat": ",.0f",
+                                  "gridcolor": "rgba(128,128,128,0.15)"},
+                        "yaxis": {"gridcolor": "rgba(128,128,128,0.08)"},
+                    },
+                }
+            else:
+                nbins = max(6, min(len(all_values) // 3, 20))
+                configs["deal_size_hist"] = {
+                    "data": [
+                        {"x": dist["won_values"], "type": "histogram", "name": "Won",
+                         "marker": {"color": "rgba(16,163,127,0.7)"}, "nbinsx": nbins},
+                        {"x": dist["lost_values"], "type": "histogram", "name": "Lost",
+                         "marker": {"color": "rgba(220,53,69,0.7)"}, "nbinsx": nbins},
+                    ],
+                    "layout": {
+                        "barmode": "overlay",
+                        "showlegend": True,
+                        "legend": {"x": 0.75, "y": 0.95},
+                        "margin": {"t": 20, "b": 40, "l": 60, "r": 20},
+                        "paper_bgcolor": "transparent",
+                        "plot_bgcolor": "transparent",
+                        "xaxis": {"title": "Deal Size", "tickprefix": "$",
+                                  "tickformat": ",.0f"},
+                        "yaxis": {"title": "Count",
+                                  "gridcolor": "rgba(128,128,128,0.15)",
+                                  "dtick": 1},
+                    },
+                }
 
         # Tier analysis
         tier = m.get("win_rate_by_tier")

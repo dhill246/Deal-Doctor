@@ -55,7 +55,29 @@ def api_request(method, path, data=None, params=None):
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8") if e.fp else ""
-        print(f"API Error {e.code}: {error_body}", file=sys.stderr)
+        if e.code == 401:
+            print("ERROR: HubSpot rejected your token (401 Unauthorized).", file=sys.stderr)
+            print("  Check that you copied the full token (starts with 'pat-') into .env", file=sys.stderr)
+        elif e.code == 403:
+            # Try to identify which scope is missing from the URL
+            scope_hints = {
+                "/crm/v3/owners": "crm.objects.owners.read",
+                "/crm/v3/objects/deals": "crm.objects.deals.read",
+                "/crm/v3/properties/deals": "crm.objects.deals.read",
+                "/crm/v3/pipelines/deals": "crm.objects.deals.read",
+            }
+            missing_scope = "unknown"
+            for url_fragment, scope in scope_hints.items():
+                if url_fragment in path:
+                    missing_scope = scope
+                    break
+            print(f"ERROR: Permission denied (403 Forbidden) for {path}", file=sys.stderr)
+            print(f"  Your HubSpot Private App is likely missing the '{missing_scope}' scope.", file=sys.stderr)
+            print(f"  Go to Settings > Integrations > Private Apps > your app > Scopes tab, enable it, and update the app.", file=sys.stderr)
+        elif e.code == 429:
+            print("ERROR: Rate limited by HubSpot (429). Wait 30 seconds and try again.", file=sys.stderr)
+        else:
+            print(f"API Error {e.code}: {error_body}", file=sys.stderr)
         raise
 
 
@@ -143,14 +165,18 @@ def cmd_schema(_args):
         })
 
     print("Fetching owners...", file=sys.stderr)
-    owners_raw = paginate_list("/crm/v3/owners/")
-    owners = []
-    for o in owners_raw:
-        owners.append({
-            "id": o["id"],
-            "name": f"{o.get('firstName', '')} {o.get('lastName', '')}".strip(),
-            "email": o.get("email", ""),
-        })
+    try:
+        owners_raw = paginate_list("/crm/v3/owners/")
+        owners = []
+        for o in owners_raw:
+            owners.append({
+                "id": o["id"],
+                "name": f"{o.get('firstName', '')} {o.get('lastName', '')}".strip(),
+                "email": o.get("email", ""),
+            })
+    except Exception as e:
+        print(f"WARNING: Could not fetch owners (missing crm.objects.owners.read scope?): {e}", file=sys.stderr)
+        owners = []
 
     schema = {
         "properties": properties,
@@ -2479,10 +2505,13 @@ def cmd_fetch(args):
         pipeline_stages.sort(key=lambda x: x["displayOrder"])
 
     print("Fetching owners...", file=sys.stderr)
-    owners_raw = paginate_list("/crm/v3/owners/")
     owners_map = {}
-    for o in owners_raw:
-        owners_map[o["id"]] = f"{o.get('firstName', '')} {o.get('lastName', '')}".strip()
+    try:
+        owners_raw = paginate_list("/crm/v3/owners/")
+        for o in owners_raw:
+            owners_map[o["id"]] = f"{o.get('firstName', '')} {o.get('lastName', '')}".strip()
+    except Exception as e:
+        print(f"WARNING: Could not fetch owners — rep names will show as IDs. ({e})", file=sys.stderr)
 
     deals = fetch_deals(config, pipeline_stages)
 
@@ -2610,10 +2639,13 @@ def cmd_analyze(args):
         pipeline_stages.sort(key=lambda x: x["displayOrder"])
 
     print("Fetching owners...", file=sys.stderr)
-    owners_raw = paginate_list("/crm/v3/owners/")
     owners_map = {}
-    for o in owners_raw:
-        owners_map[o["id"]] = f"{o.get('firstName', '')} {o.get('lastName', '')}".strip()
+    try:
+        owners_raw = paginate_list("/crm/v3/owners/")
+        for o in owners_raw:
+            owners_map[o["id"]] = f"{o.get('firstName', '')} {o.get('lastName', '')}".strip()
+    except Exception as e:
+        print(f"WARNING: Could not fetch owners — rep names will show as IDs. ({e})", file=sys.stderr)
 
     deals = fetch_deals(config, pipeline_stages)
 
@@ -2641,6 +2673,165 @@ def cmd_analyze(args):
 
 
 # ---------------------------------------------------------------------------
+# Check command — validates .env, token, and scopes
+# ---------------------------------------------------------------------------
+
+def cmd_check(_args):
+    """Check that .env exists, token is set, and HubSpot scopes are valid."""
+    env_path = SCRIPT_DIR / ".env"
+
+    # Check .env exists
+    if not env_path.exists():
+        example_path = SCRIPT_DIR / ".env.example"
+        if example_path.exists():
+            print("ERROR: No .env file found. Copy .env.example to .env and add your token:", file=sys.stderr)
+            print(f"  cp {example_path} {env_path}", file=sys.stderr)
+        else:
+            print("ERROR: No .env file found. Create one with:", file=sys.stderr)
+            print(f"  echo 'HUBSPOT_ACCESS_TOKEN=pat-your-token-here' > {env_path}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check token is set
+    if not TOKEN:
+        print("ERROR: HUBSPOT_ACCESS_TOKEN is empty or missing in .env", file=sys.stderr)
+        print("  Open .env in a text editor and set HUBSPOT_ACCESS_TOKEN=pat-...", file=sys.stderr)
+        sys.exit(1)
+
+    if TOKEN.startswith("pat-na1-xxxxxxxx") or TOKEN == "your-token-here":
+        print("ERROR: .env still has the placeholder token. Replace it with your real token.", file=sys.stderr)
+        sys.exit(1)
+
+    # Test each scope
+    checks = {
+        "deals": ("/crm/v3/properties/deals", "crm.objects.deals.read"),
+        "pipelines": ("/crm/v3/pipelines/deals", "crm.objects.deals.read"),
+        "owners": ("/crm/v3/owners/", "crm.objects.owners.read"),
+    }
+
+    results = {}
+    for name, (path, scope) in checks.items():
+        try:
+            api_request("GET", path, params={"limit": "1"})
+            results[name] = "ok"
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                results[name] = f"MISSING SCOPE: {scope}"
+            else:
+                results[name] = f"ERROR: HTTP {e.code}"
+        except Exception as e:
+            results[name] = f"ERROR: {e}"
+
+    all_ok = all(v == "ok" for v in results.values())
+    output = {"status": "ready" if all_ok else "needs_fix", "checks": results}
+
+    if not all_ok:
+        # Identify which scopes need to be added
+        missing = [checks[name][1] for name, status in results.items() if "MISSING SCOPE" in status]
+        if missing:
+            output["missing_scopes"] = list(set(missing))
+            output["fix"] = "Go to HubSpot Settings > Integrations > Private Apps > your app > Scopes tab. Enable the missing scopes and click 'Save'."
+
+    print(json.dumps(output, indent=2))
+    if not all_ok:
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# Init command — auto-generate analysis_config.json
+# ---------------------------------------------------------------------------
+
+def cmd_init(_args):
+    """Auto-detect pipelines, stages, and write analysis_config.json."""
+    if not TOKEN:
+        print("ERROR: HUBSPOT_ACCESS_TOKEN not found in .env. Run 'check' first.", file=sys.stderr)
+        sys.exit(1)
+
+    print("Fetching pipelines...", file=sys.stderr)
+    try:
+        pipelines_raw = api_request("GET", "/crm/v3/pipelines/deals")
+    except Exception as e:
+        print(f"ERROR: Could not fetch pipelines: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    pipelines = pipelines_raw.get("results", [])
+    if not pipelines:
+        print("ERROR: No deal pipelines found in this HubSpot portal.", file=sys.stderr)
+        sys.exit(1)
+
+    # Build pipeline summary for output
+    pipeline_options = []
+    for pl in pipelines:
+        stages = pl.get("stages", [])
+        won_stages = []
+        lost_stages = []
+        for s in stages:
+            meta = s.get("metadata", {})
+            prob = meta.get("probability")
+            if prob is not None:
+                try:
+                    p = float(prob)
+                    if p == 1.0:
+                        won_stages.append({"id": s["id"], "label": s["label"]})
+                    elif p == 0.0:
+                        lost_stages.append({"id": s["id"], "label": s["label"]})
+                except (ValueError, TypeError):
+                    pass
+
+        pipeline_options.append({
+            "id": pl["id"],
+            "label": pl["label"],
+            "total_stages": len(stages),
+            "closed_won_stages": won_stages,
+            "closed_lost_stages": lost_stages,
+        })
+
+    # Auto-select if only one pipeline, or use --pipeline flag
+    selected = None
+    if _args.pipeline:
+        for p in pipeline_options:
+            if p["id"] == _args.pipeline:
+                selected = p
+                break
+        if not selected:
+            print(f"ERROR: No pipeline found with ID '{_args.pipeline}'", file=sys.stderr)
+            sys.exit(1)
+    elif len(pipeline_options) == 1:
+        selected = pipeline_options[0]
+
+    # Build the config
+    if selected:
+        config = {
+            "pipeline_id": selected["id"],
+            "closed_won_stages": [s["id"] for s in selected["closed_won_stages"]],
+            "closed_lost_stages": [s["id"] for s in selected["closed_lost_stages"]],
+            "time_period": {"start": None, "end": None},
+            "focus_areas": ["rep_performance", "source_analysis", "loss_reasons"],
+        }
+
+        config_path = SCRIPT_DIR / "analysis_config.json"
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+        output = {
+            "status": "config_written",
+            "config_path": str(config_path),
+            "pipeline": selected["label"],
+            "closed_won_stages": selected["closed_won_stages"],
+            "closed_lost_stages": selected["closed_lost_stages"],
+            "time_period": "all time (edit analysis_config.json to set start/end dates)",
+        }
+    else:
+        # Multiple pipelines — output the options for Claude/user to pick
+        output = {
+            "status": "choose_pipeline",
+            "pipelines": pipeline_options,
+            "instruction": "Multiple pipelines found. Re-run with --pipeline <id> to select one.",
+        }
+
+    print(json.dumps(output, indent=2))
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -2648,6 +2839,9 @@ def main():
     parser = argparse.ArgumentParser(description="Deal Doctor — HubSpot Pipeline Diagnosis Tool")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    subparsers.add_parser("check", help="Validate .env, token, and HubSpot scopes")
+    init_parser = subparsers.add_parser("init", help="Auto-detect pipelines/stages and write analysis_config.json")
+    init_parser.add_argument("--pipeline", default=None, help="Pipeline ID to use (if multiple exist)")
     subparsers.add_parser("schema", help="Fetch and display deal schema")
 
     fetch_parser = subparsers.add_parser("fetch", help="Fetch deals and save raw data")
@@ -2666,7 +2860,11 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "schema":
+    if args.command == "check":
+        cmd_check(args)
+    elif args.command == "init":
+        cmd_init(args)
+    elif args.command == "schema":
         cmd_schema(args)
     elif args.command == "fetch":
         cmd_fetch(args)

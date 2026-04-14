@@ -9,8 +9,22 @@ A pipeline diagnosis tool that connects to a user's HubSpot portal, pulls their 
 - `.env` holds the user's `HUBSPOT_ACCESS_TOKEN`
 - `analysis_config.json` holds the analysis parameters (generated interactively)
 
+## End-to-End Flow
+
+```
+check → init → fetch → metrics → report
+```
+
+1. `py deal_analyzer.py check` — Validates .env, token, and HubSpot scopes. Run this first.
+2. `py deal_analyzer.py init` — Fetches pipelines, auto-detects won/lost stages, writes `analysis_config.json`. Use `--pipeline <id>` if multiple pipelines exist.
+3. `py deal_analyzer.py fetch --config analysis_config.json` — Pulls deals from HubSpot, saves to `deals.json`.
+4. `py deal_analyzer.py metrics --data deals.json` — Computes all metrics, saves to `analysis.json`.
+5. `py deal_analyzer.py report --data analysis.json --sections "sec1,sec2" --findings 'JSON'` — Generates the interactive HTML report.
+
 ## Commands
 
+- `py deal_analyzer.py check` — Validates .env exists, token is set, and each HubSpot scope works. Returns JSON with pass/fail per scope and tells you exactly what to fix.
+- `py deal_analyzer.py init` — Auto-detects pipelines and closed won/lost stages (probability 1.0/0.0), writes `analysis_config.json`. If multiple pipelines, returns the list so you can pick one with `--pipeline <id>`.
 - `py deal_analyzer.py schema` — Fetches pipelines, stages, and owners. Returns JSON.
 - `py deal_analyzer.py fetch --config analysis_config.json` — Fetches deals, saves to `deals.json`, returns summary stats.
 - `py deal_analyzer.py metrics --data deals.json` — Computes all metrics, saves to `analysis.json`, returns full JSON.

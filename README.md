@@ -38,6 +38,7 @@ You need a token so the tool can read your deals. It takes about 2 minutes and o
 4. Give it a name (e.g., "Deal Doctor")
 5. Click the **Scopes** tab
 6. Search for **crm.objects.deals.read** and check the box
+7. Search for **crm.objects.owners.read** and check the box (needed for rep names)
 7. Click **"Create app"** in the top right, then **"Continue creating"** on the confirmation dialog
 8. Copy your access token — it starts with `pat-`
 
@@ -124,6 +125,8 @@ No. Claude Code handles everything — installing packages, running the script, 
 
 **I'm getting an error about my token.**
 Open the `.env` file and make sure it looks exactly like `HUBSPOT_ACCESS_TOKEN=pat-na1-...` with no extra spaces, quotes, or line breaks. The token should start with `pat-`.
+
+If you see a "forbidden" or "access denied" error specifically about owners, your token is missing the `crm.objects.owners.read` scope. Edit your Private App in HubSpot and add that scope.
 
 **What if Claude Code says Python isn't installed?**
 Close and reopen Claude Code after installing Python — it needs to pick up the new PATH. If you just installed Python on Windows, make sure you checked "Add Python to PATH" during installation.

@@ -57,7 +57,7 @@ cp .env.example .env
 
 Then read the `.env` file.
 
-**If the file contains a real token** (starts with `pat-` and is NOT the placeholder `pat-na1-xxxxxxxx...` or `your-token-here`): Say "Connected to HubSpot. Let's look at your deals." and move to Step 2.
+**If the file contains a real token** (starts with `pat-` and is NOT the placeholder `pat-na1-xxxxxxxx...` or `your-token-here`): Say "Connected to HubSpot. Let's look at your deals." and move to Step 1d.
 
 **If the token is missing, blank, or still a placeholder**: Walk them through it:
 
@@ -71,6 +71,7 @@ Then read the `.env` file.
 > 4. Name it something like **"Deal Doctor"**
 > 5. Click the **Scopes** tab
 > 6. Search for **crm.objects.deals.read** and check the box
+> 7. Search for **crm.objects.owners.read** and check the box (for rep names)
 > 7. Click **"Create app"** (top right), then **"Continue creating"** on the confirmation
 > 8. You'll see your token — it starts with `pat-`. Copy it.
 >
@@ -84,37 +85,36 @@ Then read the `.env` file.
 
 Wait for them to confirm. Then re-read `.env` and verify the token starts with `pat-`. If it still doesn't look right, let them know what you see and help them fix it.
 
-### 1d. Validate the token works
+### 1d. Validate the token and scopes
 
-Run the schema command to test the connection:
+Run the check command to test the connection and scopes:
 
 ```bash
-py deal_analyzer.py schema
+py deal_analyzer.py check
 ```
 
-**If it returns pipeline data**: The token works. Move to Step 2.
+This validates the token AND checks each required HubSpot scope individually. Read the JSON output:
 
-**If it errors** (401, 403, connection error, etc.): Tell the user what went wrong in plain language:
-- 401/403: "That token doesn't seem to have access. Double-check that you copied the full token and that the Private App has the `crm.objects.deals.read` scope enabled."
-- Connection error: "Can't reach HubSpot — check your internet connection."
-- Other: Show the error and help them interpret it.
+- **If status is "ready"**: All scopes work. Move to Step 2.
+- **If status is "needs_fix"**: The output tells you exactly which scopes are missing. Tell the user in plain language: "Your token works, but it's missing the `<scope>` permission. Go to your Private App settings, click the Scopes tab, search for `<scope>`, enable it, and save."
+- **If owners check fails but deals check passes**: That's fine — tell the user "Owner names won't show up in the report (rep IDs will show instead), but everything else works. You can add the `crm.objects.owners.read` scope later if you want rep names."
+- **If it errors with 401**: "That token doesn't seem to be valid. Double-check that you copied the full token from HubSpot."
+- **Connection error**: "Can't reach HubSpot — check your internet connection."
 
 ---
 
-## Step 2: Discover Their Portal
+## Step 2: Set Up the Config
 
-You already ran the schema command in 1d. Parse the JSON. Note their pipelines, stages (identify closed won/lost from probability metadata), owners, and any custom properties like `closed_lost_reason`.
+Run the init command to auto-detect pipelines and stages:
 
-## Step 3: Quick Config
+```bash
+py deal_analyzer.py init
+```
 
-Ask just TWO things conversationally — don't make this feel like a form:
+Read the JSON output:
 
-1. **Which pipeline?** (skip if only one)
-2. **Time period?** Suggest "last 6 months" as default, offer alternatives
-
-Auto-detect closed won/lost stages from the metadata (probability 1.0 = won, 0.0 = lost). Confirm quickly: "Looks like 'Closed won' and 'Closed lost' are your terminal stages — that right?"
-
-Write `analysis_config.json` with ALL focus areas enabled. You'll decide what matters after you see the data.
+- **If status is "config_written"**: The config was auto-generated. Confirm with the user: "Found your pipeline '[name]' with [won stages] and [lost stages] as terminal stages. Sound right?" Then ask about time period — suggest "last 6 months" as default. If they want a time range, edit `analysis_config.json` to set the `time_period.start` and `time_period.end` fields (YYYY-MM-DD format).
+- **If status is "choose_pipeline"**: Multiple pipelines exist. Show the user the list and ask which one to use. Then re-run with `--pipeline <id>`.
 
 ## Step 4: Pull the Data
 

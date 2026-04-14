@@ -9,7 +9,9 @@
       "Bash(python3 deal_analyzer.py*)",
       "Bash(start:*)",
       "Bash(python --version)",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "mcp__HubSpotDev__search-docs",
+      "Bash(py -c \"import deal_analyzer; print\\('imports ok'\\)\")"
     ]
   }
 }

@@ -72,7 +72,7 @@ Then read the `.env` file.
 > 5. Click the **Scopes** tab
 > 6. Search for **crm.objects.deals.read** and check the box
 > 7. Search for **crm.objects.owners.read** and check the box (for rep names)
-> 7. Click **"Create app"** (top right), then **"Continue creating"** on the confirmation
+> 8. Click **"Create app"** (top right), then **"Continue creating"** on the confirmation
 > 8. You'll see your token — it starts with `pat-`. Copy it.
 >
 > Now open the `.env` file in this project folder. You can open it in any text editor — Notepad, VS Code, whatever you have. Replace the placeholder text so the file looks like this:

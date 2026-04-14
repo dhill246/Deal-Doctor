@@ -2,6 +2,8 @@
 
 A pipeline diagnosis tool that connects to your HubSpot portal, pulls your deal data, and tells you what's healthy and what needs attention. Runs inside [Claude Code](https://claude.ai/code) — no coding required.
 
+Powered by [Morph Data Strategies](https://morphdatastrategies.com) — HubSpot RevOps agency. [Reach out](https://morphdatastrategies.com) if you need help.
+
 ![Deal Doctor Report Demo](screenshots/deal-doctor-demo.gif)
 
 ---
@@ -39,8 +41,8 @@ You need a token so the tool can read your deals. It takes about 2 minutes and o
 5. Click the **Scopes** tab
 6. Search for **crm.objects.deals.read** and check the box
 7. Search for **crm.objects.owners.read** and check the box (needed for rep names)
-7. Click **"Create app"** in the top right, then **"Continue creating"** on the confirmation dialog
-8. Copy your access token — it starts with `pat-`
+8. Click **"Create app"** in the top right, then **"Continue creating"** on the confirmation dialog
+9. Copy your access token — it starts with `pat-`
 
 Keep this token handy for the next step.
 
